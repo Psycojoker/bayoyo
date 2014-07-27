@@ -1,0 +1,63 @@
+#!/usr/bin/python
+# -*- coding:Utf-8 -*-
+
+import os
+import sys
+import optparse
+
+from reverend.thomas import Bayes
+
+
+db_path = os.path.join(os.path.split(os.path.realpath(__file__))[0], "bayoyo.bay")
+
+
+def get_page(url):
+    return os.popen("w3m -dump %s" % url).read()
+
+
+if __name__ == "__main__":
+    parser = optparse.OptionParser()
+    parser.add_option("-l", "--like", action="store_true", dest="like")
+    parser.add_option("-d", "--dislike", action="store_true", dest="dislike")
+
+    (options, args) = parser.parse_args()
+
+    if not args:
+        print "need an url"
+        sys.exit(1)
+
+    if not args[0].startswith("http://") and not args[0].starswith("https://"):
+        print "need to start with http(s), yes I'm lazy"
+        sys.exit(1)
+
+    # website_name = args[0][:args[0].find("/", 8)]
+
+    guesseur = Bayes()
+    guesseur.load(db_path)
+
+    if options.like and options.dislike:
+        print "Can't dislike and like the same link in one time"
+        sys.exit(1)
+
+    page = get_page(args[0])
+
+    if not page:
+        print "zomg, not page !"
+        sys.exit(1)
+
+    if options.like:
+        # guesseur.train(website_name, page)
+        guesseur.train("like", page)
+    elif options.dislike:
+        # guesseur.train(website_name, page)
+        guesseur.train("dislike", page)
+    else:
+        pass
+
+    zob = ""
+    for i in guesseur.guess(page):
+        zob += "%s: %i%% --- " % (i[0] if not i[0].startswith("http://") else i[0][7:], 100 * i[1])
+
+    print zob[:-4]
+
+    guesseur.save(db_path)
